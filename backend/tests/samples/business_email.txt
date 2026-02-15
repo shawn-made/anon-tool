@@ -1,0 +1,22 @@
+From: Robert Garcia <robert.garcia@techstart.io>
+To: Lisa Wang <lisa.wang@globalfinance.com>
+CC: David Park <david.park@techstart.io>
+Date: January 15, 2026
+Subject: Partnership Proposal — TechStart x Global Finance Corp
+
+Hi Lisa,
+
+Following up on our conversation at the TechStart Innovation Summit last week. It was great meeting you and the Global Finance Corp team.
+
+I'd like to formally propose a strategic partnership between TechStart and Global Finance Corp. As discussed, our AI platform could significantly enhance your fraud detection capabilities.
+
+Key points:
+- David Park from our engineering team will lead the technical integration
+- We estimate a 3-month implementation timeline
+- Your CTO, Michael Chen, expressed strong interest during our demo session
+
+Please reach out to me at (415) 555-0198 or robert.garcia@techstart.io to schedule a follow-up meeting.
+
+Best regards,
+Robert Garcia
+CEO, TechStart

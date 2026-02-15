@@ -1,0 +1,29 @@
+Meeting Notes — Q4 Planning Session
+Date: December 3, 2025
+Location: Pinnacle Solutions HQ, Conference Room B
+
+Attendees:
+- Alice Martinez (VP of Product, Pinnacle Solutions)
+- Bob Thompson (Engineering Lead, Pinnacle Solutions)
+- Carol Davis (Head of Partnerships, Pinnacle Solutions)
+- James Wilson (External Consultant, Apex Advisory Group)
+
+Agenda:
+1. Q4 roadmap review
+2. Partnership opportunities
+3. Budget allocation
+
+Discussion Summary:
+
+Alice Martinez presented the Q4 product roadmap. Three major features are planned for release before end of quarter. Bob Thompson raised concerns about the engineering timeline, noting that two senior developers are on leave until mid-January.
+
+Carol Davis proposed partnering with Vertex Analytics to accelerate the data pipeline work. James Wilson from Apex Advisory Group supported this recommendation, citing similar partnerships at other firms he advises.
+
+Action Items:
+- Alice Martinez to finalize the Q4 budget by Friday, December 8
+- Bob Thompson to submit revised engineering estimates by Monday
+- Carol Davis to schedule introductory call with Vertex Analytics (contact: Sarah Kim, sarah.kim@vertexanalytics.com)
+- James Wilson to provide benchmark data from comparable partnerships
+
+Next meeting: December 10, 2025 at 2:00 PM
+Contact Alice Martinez at alice.martinez@pinnaclesolutions.com with questions.
