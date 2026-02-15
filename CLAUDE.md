@@ -69,6 +69,7 @@ QUESTIONS_LOG.md
 
 ## Development Workflow
 
+- Read `~/Projects/PROCESS_PLAYBOOK.md` before starting — it contains cross-project process rules
 - Check `TASKS.md` for current task and progress
 - Work through tasks sequentially (Task 1 -> Task 8)
 - For each task: implement -> write tests -> run tests -> lint -> mark complete
@@ -76,6 +77,38 @@ QUESTIONS_LOG.md
 - Lint: `cd backend && ruff check .`
 - Fix lint: `cd backend && ruff check . --fix`
 - Document any non-obvious decisions in `DECISIONS.md`
+
+## Debugging
+
+```bash
+# Run all tests
+cd backend && python -m pytest tests/ -v
+
+# Run tests with coverage
+cd backend && python -m pytest tests/ -v --cov=app --cov-report=term-missing
+
+# Lint
+cd backend && ruff check .
+
+# Fix lint issues
+cd backend && ruff check . --fix
+
+# Check Ollama status
+curl -s http://localhost:11434/api/tags | python -m json.tool
+
+# Inspect a mapping file
+python -m json.tool ~/.anontool/mappings/<mapping_id>.json
+```
+
+## PM Learning Log (Required)
+
+Maintain a `docs/PM_LEARNING_LOG.md` file throughout development. This file helps the project owner (a PM, not an engineer) build technical fluency.
+
+### Rules
+1. **Update after every task**: When a task introduces a new technical concept, add an entry.
+2. **Write for a PM audience**: Plain English, no unexplained jargon, include analogies.
+3. **Format**: Each entry has a term name, 1-2 sentence explanation, and a "When to use this term" example sentence a PM could say in a meeting.
+4. **Create during Task 1** with sections: Architecture, Data & Storage, Security, CLI & I/O, Testing, Development Process.
 
 ## Detection Reference
 
