@@ -75,3 +75,26 @@ def tmp_anontool_dir(tmp_path):
     mappings_dir.mkdir()
     output_dir.mkdir()
     return tmp_path
+
+
+@pytest.fixture
+def sample_transcript_folder(tmp_path):
+    """Create a temporary folder with sample transcript files."""
+    import time
+
+    folder = tmp_path / "transcripts"
+    folder.mkdir()
+
+    (folder / "transcript_001.txt").write_text(
+        "John Smith discussed the project timeline with Jane Doe."
+    )
+    time.sleep(0.05)
+    (folder / "transcript_002.txt").write_text(
+        "John Smith met with Robert Garcia from Acme Corporation."
+    )
+    time.sleep(0.05)
+    (folder / "transcript_003.md").write_text(
+        "# Meeting Notes\nSarah Johnson presented the Q4 results for Acme Corporation."
+    )
+
+    return folder

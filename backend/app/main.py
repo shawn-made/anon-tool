@@ -71,6 +71,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     show.add_argument("mapping_id", help="The mapping ID to display")
 
+    # bulk-anonymize
+    bulk = subparsers.add_parser(
+        "bulk-anonymize",
+        help="Anonymize all files in a folder into one merged output",
+    )
+    bulk.add_argument("folder", help="Path to the folder containing files to anonymize")
+    bulk.add_argument(
+        "--mapping-id", help="Mapping ID to use (auto-generated if omitted)"
+    )
+    bulk.add_argument(
+        "--output", help="Output file path for merged result (auto-generated if omitted)"
+    )
+    bulk.add_argument(
+        "--use-ollama",
+        action="store_true",
+        help="Use Ollama LLM for enhanced entity verification",
+    )
+
     return parser
 
 
@@ -203,6 +221,49 @@ def cmd_show_mapping(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_bulk_anonymize(args: argparse.Namespace) -> int:
+    """Handle the bulk-anonymize subcommand."""
+    from app.services.anonymizer import anonymize_folder
+
+    folder_path = Path(args.folder)
+    if not folder_path.exists():
+        print(_color(f"Error: Folder not found: {folder_path}", _RED), file=sys.stderr)
+        return 1
+    if not folder_path.is_dir():
+        print(_color(f"Error: Not a directory: {folder_path}", _RED), file=sys.stderr)
+        return 1
+
+    def progress(current: int, total: int, filename: str) -> None:
+        print(f"  Processing {current}/{total}: {_color(filename, _CYAN)}")
+
+    try:
+        result = anonymize_folder(
+            folder_path=folder_path,
+            output_path=args.output,
+            mapping_id=args.mapping_id,
+            use_ollama=args.use_ollama,
+            progress_callback=progress,
+        )
+    except ValueError as e:
+        print(_color(f"Error: {e}", _RED), file=sys.stderr)
+        return 1
+
+    print()
+    print(_color("Bulk anonymization complete!", _GREEN))
+    print(f"  Files processed: {_color(str(result.files_processed), _CYAN)}")
+    print(f"  Total entities:  {_color(str(result.total_entities), _CYAN)}")
+    print(f"  Output file:     {_color(result.output_path, _CYAN)}")
+    print(f"  Mapping ID:      {_color(result.mapping_id, _YELLOW)}")
+
+    if result.files_failed > 0:
+        print()
+        print(_color(f"  Warnings: {result.files_failed} file(s) failed:", _YELLOW))
+        for fname, err in result.failed_files:
+            print(f"    - {fname}: {err}")
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry point."""
     parser = build_parser()
@@ -215,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
     commands = {
         "anonymize": lambda: cmd_anonymize(args),
         "deanonymize": lambda: cmd_deanonymize(args),
+        "bulk-anonymize": lambda: cmd_bulk_anonymize(args),
         "list-mappings": lambda: cmd_list_mappings(),
         "show-mapping": lambda: cmd_show_mapping(args),
     }

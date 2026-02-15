@@ -244,3 +244,134 @@ def deanonymize_file(
         "output_path": str(output_path),
         "mapping_id": mapping_id,
     }
+
+
+def _get_file_creation_time(path: Path) -> float:
+    """Get file creation time (birth time on macOS, ctime fallback elsewhere).
+
+    Args:
+        path: Path to the file.
+
+    Returns:
+        Creation timestamp as a float (seconds since epoch).
+    """
+    stat = path.stat()
+    try:
+        return stat.st_birthtime  # macOS
+    except AttributeError:
+        return stat.st_ctime  # Linux/Windows fallback
+
+
+@dataclass
+class BulkAnonymizeResult:
+    """Result of a bulk folder anonymization operation."""
+
+    output_path: str
+    mapping_id: str
+    files_processed: int
+    files_failed: int
+    total_entities: int
+    failed_files: list[tuple[str, str]] = field(default_factory=list)
+
+
+def anonymize_folder(
+    folder_path: str | Path,
+    output_path: str | Path | None = None,
+    mapping_id: str | None = None,
+    base_dir: Path | None = None,
+    use_ollama: bool = False,
+    progress_callback: callable | None = None,
+) -> BulkAnonymizeResult:
+    """Anonymize all supported files in a folder into a single merged output.
+
+    Files are sorted by creation date (oldest first) and processed individually
+    using a shared mapping for consistent pseudonyms across all documents.
+
+    Args:
+        folder_path: Path to the folder containing files to anonymize.
+        output_path: Path for the merged output file. Auto-generated if None.
+        mapping_id: Mapping ID to use. Auto-generated if None.
+        base_dir: Override base directory for mapping storage.
+        use_ollama: Whether to use Ollama for entity verification.
+        progress_callback: Optional callable(current, total, filename) for progress.
+
+    Returns:
+        BulkAnonymizeResult with processing summary.
+
+    Raises:
+        FileNotFoundError: If folder_path doesn't exist.
+        ValueError: If folder_path is not a directory or contains no supported files.
+    """
+    folder_path = Path(folder_path)
+
+    if not folder_path.exists():
+        raise FileNotFoundError(f"Folder not found: {folder_path}")
+
+    if not folder_path.is_dir():
+        raise ValueError(f"Not a directory: {folder_path}")
+
+    # Collect supported files
+    supported_files = [
+        f for f in folder_path.iterdir()
+        if f.is_file() and f.suffix in _SUPPORTED_EXTENSIONS
+    ]
+
+    if not supported_files:
+        raise ValueError(f"No supported files found in {folder_path}")
+
+    # Sort by creation date (oldest first)
+    supported_files.sort(key=_get_file_creation_time)
+
+    # Generate defaults
+    if mapping_id is None:
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        mapping_id = f"{folder_path.name}_bulk_{ts}"
+
+    if output_path is None:
+        out_dir = _default_output_dir()
+        output_path = out_dir / f"{folder_path.name}_bulk.txt"
+    else:
+        output_path = Path(output_path)
+
+    # Process each file
+    sections: list[str] = []
+    total_entities = 0
+    files_processed = 0
+    failed_files: list[tuple[str, str]] = []
+    total = len(supported_files)
+
+    for i, file_path in enumerate(supported_files, start=1):
+        if progress_callback:
+            progress_callback(i, total, file_path.name)
+
+        try:
+            text = file_path.read_text(encoding="utf-8")
+            result = anonymize_text(
+                text, mapping_id, base_dir=base_dir, use_ollama=use_ollama
+            )
+
+            # Build section with header
+            creation_ts = _get_file_creation_time(file_path)
+            created_date = datetime.fromtimestamp(
+                creation_ts, tz=timezone.utc
+            ).strftime("%Y-%m-%d")
+            header = f"=== {file_path.name} (Created: {created_date}) ==="
+
+            sections.append(f"{header}\n\n{result.anonymized_text}")
+            total_entities += len(result.entities_found)
+            files_processed += 1
+        except Exception as exc:
+            failed_files.append((file_path.name, str(exc)))
+
+    # Write merged output
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text("\n\n".join(sections), encoding="utf-8")
+
+    return BulkAnonymizeResult(
+        output_path=str(output_path),
+        mapping_id=mapping_id,
+        files_processed=files_processed,
+        files_failed=len(failed_files),
+        total_entities=total_entities,
+        failed_files=failed_files,
+    )
