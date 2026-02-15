@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnonTool</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 2rem; }
+        .container { max-width: 640px; margin: 0 auto; }
+        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+        .card { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        .toggle { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+        .toggle label { cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; border: 2px solid #ddd; font-weight: 500; }
+        .toggle input:checked + label { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+        .toggle input { display: none; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 0.25rem; font-size: 0.9rem; }
+        .form-group .hint { font-size: 0.8rem; color: #888; margin-bottom: 0.25rem; }
+        input[type="text"], select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
+        input[type="file"] { font-size: 0.9rem; }
+        .checkbox-group { display: flex; align-items: center; gap: 0.5rem; }
+        .checkbox-group input { width: auto; }
+        button { background: #2563eb; color: #fff; border: none; padding: 0.6rem 1.5rem; border-radius: 6px; font-size: 0.95rem; cursor: pointer; font-weight: 500; }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #93c5fd; cursor: not-allowed; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .results { margin-top: 1rem; padding: 1rem; border-radius: 6px; font-size: 0.9rem; }
+        .results.success { background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .results.error { background: #fef2f2; border: 1px solid #fecaca; }
+        .results p { margin-bottom: 0.3rem; }
+        .results strong { font-weight: 600; }
+        .spinner { display: none; margin-left: 0.5rem; }
+        .spinner.active { display: inline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AnonTool</h1>
+
+        <div class="card">
+            <div class="toggle">
+                <input type="radio" name="mode" id="mode-anon" value="anonymize" checked>
+                <label for="mode-anon">Anonymize</label>
+                <input type="radio" name="mode" id="mode-deanon" value="deanonymize">
+                <label for="mode-deanon">De-anonymize</label>
+            </div>
+
+            <!-- Anonymize Section -->
+            <div id="section-anon" class="section active">
+                <form id="form-anon">
+                    <div class="form-group">
+                        <label for="anon-files">Upload files</label>
+                        <div class="hint">Accepts .txt and .md files</div>
+                        <input type="file" id="anon-files" name="files" multiple accept=".txt,.md">
+                    </div>
+                    <div class="form-group">
+                        <label for="anon-mapping">Mapping ID</label>
+                        <div class="hint">Leave blank to auto-generate</div>
+                        <input type="text" id="anon-mapping" name="mapping_id" placeholder="auto-generated">
+                    </div>
+                    <div class="form-group">
+                        <label for="anon-output">Output folder</label>
+                        <input type="text" id="anon-output" name="output_dir" value="~/Downloads">
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="anon-merge" name="merge" checked>
+                        <label for="anon-merge">Merge multiple files into one output</label>
+                    </div>
+                    <button type="submit" id="btn-anon">Anonymize<span class="spinner" id="spin-anon"> ...</span></button>
+                </form>
+            </div>
+
+            <!-- De-anonymize Section -->
+            <div id="section-deanon" class="section">
+                <form id="form-deanon">
+                    <div class="form-group">
+                        <label for="deanon-file">Upload file</label>
+                        <div class="hint">Upload the anonymized file</div>
+                        <input type="file" id="deanon-file" name="file" accept=".txt,.md">
+                    </div>
+                    <div class="form-group">
+                        <label for="deanon-mapping">Mapping ID</label>
+                        <select id="deanon-mapping" name="mapping_id">
+                            <option value="">Loading mappings...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="deanon-output">Output folder</label>
+                        <input type="text" id="deanon-output" name="output_dir" value="~/Downloads">
+                    </div>
+                    <button type="submit" id="btn-deanon">De-anonymize<span class="spinner" id="spin-deanon"> ...</span></button>
+                </form>
+            </div>
+
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        // Mode toggle
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.getElementById('section-anon').classList.toggle('active', radio.value === 'anonymize');
+                document.getElementById('section-deanon').classList.toggle('active', radio.value === 'deanonymize');
+                document.getElementById('results').innerHTML = '';
+            });
+        });
+
+        // Load mappings for de-anonymize dropdown
+        async function loadMappings() {
+            try {
+                const res = await fetch('/mappings');
+                const mappings = await res.json();
+                const select = document.getElementById('deanon-mapping');
+                if (mappings.length === 0) {
+                    select.innerHTML = '<option value="">No mappings found</option>';
+                } else {
+                    select.innerHTML = mappings.map(m => `<option value="${m}">${m}</option>`).join('');
+                }
+            } catch (e) {
+                document.getElementById('deanon-mapping').innerHTML = '<option value="">Error loading mappings</option>';
+            }
+        }
+        loadMappings();
+
+        function showResult(data, isError) {
+            const div = document.getElementById('results');
+            if (isError) {
+                div.className = 'results error';
+                div.innerHTML = `<p><strong>Error:</strong> ${data.error || 'Unknown error'}</p>`;
+                return;
+            }
+            div.className = 'results success';
+            let html = '';
+            if (data.files_processed !== undefined) {
+                html += `<p><strong>Files processed:</strong> ${data.files_processed}</p>`;
+            }
+            if (data.entities_found !== undefined) {
+                html += `<p><strong>Entities found:</strong> ${data.entities_found}</p>`;
+            }
+            if (data.output_path) {
+                html += `<p><strong>Output:</strong> ${data.output_path}</p>`;
+            }
+            if (data.mapping_id) {
+                html += `<p><strong>Mapping ID:</strong> ${data.mapping_id}</p>`;
+            }
+            if (data.files_failed > 0) {
+                html += `<p><strong>Failed:</strong> ${data.files_failed} file(s)</p>`;
+            }
+            div.innerHTML = html;
+        }
+
+        // Anonymize form
+        document.getElementById('form-anon').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-anon');
+            const spinner = document.getElementById('spin-anon');
+            btn.disabled = true;
+            spinner.classList.add('active');
+            document.getElementById('results').innerHTML = '';
+
+            const form = new FormData();
+            const files = document.getElementById('anon-files').files;
+            for (let i = 0; i < files.length; i++) form.append('files', files[i]);
+            form.append('mapping_id', document.getElementById('anon-mapping').value);
+            form.append('output_dir', document.getElementById('anon-output').value);
+            form.append('merge', document.getElementById('anon-merge').checked ? 'true' : 'false');
+
+            try {
+                const res = await fetch('/anonymize', { method: 'POST', body: form });
+                const data = await res.json();
+                showResult(data, !res.ok);
+                if (res.ok) loadMappings();
+            } catch (err) {
+                showResult({ error: err.message }, true);
+            }
+            btn.disabled = false;
+            spinner.classList.remove('active');
+        });
+
+        // De-anonymize form
+        document.getElementById('form-deanon').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-deanon');
+            const spinner = document.getElementById('spin-deanon');
+            btn.disabled = true;
+            spinner.classList.add('active');
+            document.getElementById('results').innerHTML = '';
+
+            const form = new FormData();
+            form.append('file', document.getElementById('deanon-file').files[0]);
+            form.append('mapping_id', document.getElementById('deanon-mapping').value);
+            form.append('output_dir', document.getElementById('deanon-output').value);
+
+            try {
+                const res = await fetch('/deanonymize', { method: 'POST', body: form });
+                const data = await res.json();
+                showResult(data, !res.ok);
+            } catch (err) {
+                showResult({ error: err.message }, true);
+            }
+            btn.disabled = false;
+            spinner.classList.remove('active');
+        });
+    </script>
+</body>
+</html>

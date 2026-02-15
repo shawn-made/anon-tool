@@ -83,26 +83,67 @@ def _estimate_confidence(text: str) -> float:
     return 0.60
 
 
+_MAX_CHUNK_SIZE = 900_000  # Stay under spaCy's 1M limit with margin
+
+
+def _split_into_chunks(text: str) -> list[tuple[str, int]]:
+    """Split text into chunks at line boundaries, each under spaCy's limit.
+
+    Args:
+        text: The full text to split.
+
+    Returns:
+        List of (chunk_text, offset) tuples where offset is the
+        character position of the chunk start in the original text.
+    """
+    if len(text) <= _MAX_CHUNK_SIZE:
+        return [(text, 0)]
+
+    chunks: list[tuple[str, int]] = []
+    start = 0
+    while start < len(text):
+        end = start + _MAX_CHUNK_SIZE
+        if end >= len(text):
+            chunks.append((text[start:], start))
+            break
+        # Find the last newline before the limit to split cleanly
+        split_at = text.rfind("\n", start, end)
+        if split_at <= start:
+            # No newline found — split at the limit
+            split_at = end
+        else:
+            split_at += 1  # Include the newline in this chunk
+        chunks.append((text[start:split_at], start))
+        start = split_at
+
+    return chunks
+
+
 def _detect_ner(text: str) -> list[DetectedEntity]:
-    """Detect PERSON and ORG entities using spaCy NER."""
-    doc = _nlp(text)
+    """Detect PERSON and ORG entities using spaCy NER.
+
+    Automatically chunks large texts to stay within spaCy's character limit.
+    """
+    chunks = _split_into_chunks(text)
     entities: list[DetectedEntity] = []
 
-    for ent in doc.ents:
-        if ent.label_ not in ("PERSON", "ORG"):
-            continue
+    for chunk_text, offset in chunks:
+        doc = _nlp(chunk_text)
+        for ent in doc.ents:
+            if ent.label_ not in ("PERSON", "ORG"):
+                continue
 
-        confidence = _estimate_confidence(ent.text)
-        entities.append(
-            DetectedEntity(
-                text=ent.text,
-                entity_type=ent.label_,
-                start=ent.start_char,
-                end=ent.end_char,
-                confidence=confidence,
-                source="spacy",
+            confidence = _estimate_confidence(ent.text)
+            entities.append(
+                DetectedEntity(
+                    text=ent.text,
+                    entity_type=ent.label_,
+                    start=ent.start_char + offset,
+                    end=ent.end_char + offset,
+                    confidence=confidence,
+                    source="spacy",
+                )
             )
-        )
 
     return entities
 
