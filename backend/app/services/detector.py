@@ -148,7 +148,29 @@ def _detect_ner(text: str) -> list[DetectedEntity]:
     return entities
 
 
-def _deduplicate(entities: list[DetectedEntity]) -> list[DetectedEntity]:
+def _is_inside_email(ent: DetectedEntity, text: str) -> bool:
+    """Check if an ORG/PERSON entity is embedded inside an email address.
+
+    Catches cases where spaCy detects the domain (e.g., 'Harvard') as an ORG
+    but the surrounding text is an email like jsmith@harvard.edu.
+    """
+    if ent.entity_type in ("EMAIL", "PHONE"):
+        return False
+
+    # Look for @ before the entity and . + TLD after it
+    search_start = max(0, ent.start - 50)
+    before = text[search_start : ent.start]
+    after = text[ent.end : ent.end + 10]
+
+    has_at_before = "@" in before and " " not in before[before.rfind("@") :]
+    has_tld_after = re.match(r"\.[A-Za-z]{2,}\b", after) is not None
+
+    return has_at_before and has_tld_after
+
+
+def _deduplicate(
+    entities: list[DetectedEntity], text: str = ""
+) -> list[DetectedEntity]:
     """Remove overlapping entities, preferring longer matches with higher confidence."""
     if not entities:
         return []
@@ -160,6 +182,10 @@ def _deduplicate(entities: list[DetectedEntity]) -> list[DetectedEntity]:
 
     result: list[DetectedEntity] = []
     for ent in sorted_ents:
+        # Drop ORG/PERSON entities that are inside an email address
+        if text and _is_inside_email(ent, text):
+            continue
+
         # Check if this entity overlaps with any already-accepted entity
         overlaps = False
         for accepted in result:
@@ -193,7 +219,7 @@ def detect_entities(
 
     # Combine and deduplicate
     all_entities = regex_entities + ner_entities
-    deduped = _deduplicate(all_entities)
+    deduped = _deduplicate(all_entities, text)
 
     # Filter low-confidence single-word detections
     filtered = [
