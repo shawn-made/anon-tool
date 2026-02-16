@@ -1,6 +1,5 @@
-# AnonTool — MVP Tasks
+# AnonTool — Tasks
 
-**Target**: Single-session build (all 8 tasks)
 **Method**: Sequential task execution with tests at every step
 
 ## Progress
@@ -14,6 +13,10 @@
 | Enhancement | 6 | 1/1 | Complete |
 | Interface | 7 | 1/1 | Complete |
 | Polish | 8 | 1/1 | Complete |
+| Bulk Processing | 9 | 1/1 | Complete |
+| Web UI | 10 | 1/1 | Complete |
+| Large File Support | 11 | 1/1 | Complete |
+| Email Detection Fix | 12 | 1/1 | Complete |
 
 ---
 
@@ -117,3 +120,50 @@
 - [x] Test count sanity check: expect 60+ total tests (actual: 107)
 - [x] Write final summary in DECISIONS.md
 **Done when**: All tests green, lint clean, 3 sample docs round-trip perfectly, 60+ tests total
+
+---
+
+## Task 9: Bulk Folder Anonymization
+- [x] `anonymize_folder()` in `anonymizer.py` — process all files in a folder with shared mapping
+- [x] Sort files by creation date (`st_birthtime` on macOS, `st_ctime` fallback)
+- [x] Merge all outputs into single file with `=== filename ===` section headers
+- [x] `bulk-anonymize` CLI subcommand with progress output
+- [x] `BulkAnonymizeResult` dataclass with per-file and aggregate stats
+- [x] 22 tests in `test_bulk_anonymize.py`
+**Done when**: Point at a folder, get one merged anonymized file sorted by creation date
+
+---
+
+## Task 10: Web UI (Flask)
+- [x] `web.py` Flask server with routes: `GET /`, `POST /anonymize`, `POST /deanonymize`, `GET /mappings`
+- [x] `templates/index.html` — single-page UI with mode toggle, file upload, output folder selector
+- [x] Multi-file upload with merge option
+- [x] Mapping ID dropdown for de-anonymize mode
+- [x] JSON error responses (global error handler instead of HTML 500s)
+- [x] Desktop launcher (`AnonTool.command`) for one-click startup
+- [x] 12 tests in `test_web.py`
+- [x] Runs on port 8080 (avoids macOS AirPlay conflict on 5000)
+**Done when**: Upload a file in the browser, get anonymized output, de-anonymize with mapping dropdown
+
+---
+
+## Task 11: Large File Chunking
+- [x] `_split_into_chunks()` in `detector.py` — split text at line boundaries into ~900K char chunks
+- [x] Adjusted `_detect_ner()` to process chunks with character offset correction
+- [x] Handles files exceeding spaCy's 1M character limit (tested with 12M char file)
+**Done when**: 12M character transcript processes without spaCy E088 error
+
+---
+
+## Task 12: Email-Inside-ORG Detection Fix
+- [x] `_is_inside_email()` guard in `detector.py`
+- [x] Prevents ORG/PERSON entities embedded in email addresses from being replaced independently
+- [x] 9 new tests (5 in `TestIsInsideEmail`, 4 in `TestDeduplication`)
+**Done when**: Domain names inside emails are not separately anonymized as ORGs
+
+---
+
+## Current Stats
+- **Total tests**: 150
+- **Lint**: Clean
+- **Interfaces**: CLI + Web UI (port 8080)

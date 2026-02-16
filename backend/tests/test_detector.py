@@ -6,6 +6,7 @@ from app.services.detector import (
     _detect_ner,
     _detect_regex,
     _estimate_confidence,
+    _is_inside_email,
     detect_entities,
 )
 
@@ -160,6 +161,81 @@ class TestDeduplication:
         result = _deduplicate(entities)
         assert len(result) == 1
         assert result[0].confidence == 0.90
+
+    def test_org_inside_email_dropped(self):
+        """ORG entity that is the domain of an email should be dropped."""
+        text = "Contact jsmith@harvard.edu for info."
+        entities = [
+            DetectedEntity("jsmith@harvard.edu", "EMAIL", 8, 26, 0.95, "regex"),
+            DetectedEntity("harvard", "ORG", 15, 22, 0.80, "spacy"),
+        ]
+        result = _deduplicate(entities, text)
+        assert len(result) == 1
+        assert result[0].entity_type == "EMAIL"
+
+    def test_org_inside_email_without_regex_match(self):
+        """ORG inside email pattern dropped even when regex didn't catch the email."""
+        text = "Speaker: jsmith@harvard.edu - 04:39"
+        # Simulate regex missing the email but spaCy catching the domain
+        entities = [
+            DetectedEntity("harvard", "ORG", 16, 23, 0.80, "spacy"),
+        ]
+        result = _deduplicate(entities, text)
+        assert len(result) == 0
+
+    def test_standalone_org_not_dropped(self):
+        """ORG entity NOT inside an email should be kept."""
+        text = "She works at Harvard University."
+        entities = [
+            DetectedEntity("Harvard University", "ORG", 13, 31, 0.90, "spacy"),
+        ]
+        result = _deduplicate(entities, text)
+        assert len(result) == 1
+
+    def test_person_inside_email_dropped(self):
+        """PERSON entity that is the local part of an email should be dropped."""
+        text = "Email johnsmith@company.org please."
+        entities = [
+            DetectedEntity("johnsmith@company.org", "EMAIL", 6, 26, 0.95, "regex"),
+            DetectedEntity("johnsmith", "PERSON", 6, 15, 0.80, "spacy"),
+        ]
+        result = _deduplicate(entities, text)
+        assert len(result) == 1
+        assert result[0].entity_type == "EMAIL"
+
+
+# ---------------------------------------------------------------------------
+# Email-inside-ORG guard tests
+# ---------------------------------------------------------------------------
+
+
+class TestIsInsideEmail:
+    """Tests for _is_inside_email guard function."""
+
+    def test_org_is_email_domain(self):
+        text = "jsmith@harvard.edu"
+        ent = DetectedEntity("harvard", "ORG", 7, 14, 0.80, "spacy")
+        assert _is_inside_email(ent, text) is True
+
+    def test_org_not_in_email(self):
+        text = "She works at Harvard University."
+        ent = DetectedEntity("Harvard University", "ORG", 13, 31, 0.90, "spacy")
+        assert _is_inside_email(ent, text) is False
+
+    def test_email_entity_always_false(self):
+        text = "jsmith@harvard.edu"
+        ent = DetectedEntity("jsmith@harvard.edu", "EMAIL", 0, 18, 0.95, "regex")
+        assert _is_inside_email(ent, text) is False
+
+    def test_phone_entity_always_false(self):
+        text = "Call 555-123-4567"
+        ent = DetectedEntity("555-123-4567", "PHONE", 5, 17, 0.90, "regex")
+        assert _is_inside_email(ent, text) is False
+
+    def test_org_in_email_with_surrounding_text(self):
+        text = "Contact jsmith@harvard.edu - 04:39\nNext speaker"
+        ent = DetectedEntity("harvard", "ORG", 15, 22, 0.80, "spacy")
+        assert _is_inside_email(ent, text) is True
 
 
 # ---------------------------------------------------------------------------
