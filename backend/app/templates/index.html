@@ -57,8 +57,10 @@
                     </div>
                     <div class="form-group">
                         <label for="anon-mapping">Mapping ID</label>
-                        <div class="hint">Leave blank to auto-generate</div>
-                        <input type="text" id="anon-mapping" name="mapping_id" placeholder="auto-generated">
+                        <div class="hint">Reuse an existing mapping for consistency across files</div>
+                        <select id="anon-mapping" name="mapping_id">
+                            <option value="">Auto-generate new mapping</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="anon-output">Output folder</label>
@@ -108,16 +110,20 @@
             });
         });
 
-        // Load mappings for de-anonymize dropdown
+        // Load mappings for both dropdowns
         async function loadMappings() {
             try {
                 const res = await fetch('/mappings');
                 const mappings = await res.json();
-                const select = document.getElementById('deanon-mapping');
+                const deanonSelect = document.getElementById('deanon-mapping');
+                const anonSelect = document.getElementById('anon-mapping');
                 if (mappings.length === 0) {
-                    select.innerHTML = '<option value="">No mappings found</option>';
+                    deanonSelect.innerHTML = '<option value="">No mappings found</option>';
+                    anonSelect.innerHTML = '<option value="">Auto-generate new mapping</option>';
                 } else {
-                    select.innerHTML = mappings.map(m => `<option value="${m}">${m}</option>`).join('');
+                    deanonSelect.innerHTML = mappings.map(m => `<option value="${m}">${m}</option>`).join('');
+                    anonSelect.innerHTML = '<option value="">Auto-generate new mapping</option>'
+                        + mappings.map(m => `<option value="${m}">${m}</option>`).join('');
                 }
             } catch (e) {
                 document.getElementById('deanon-mapping').innerHTML = '<option value="">Error loading mappings</option>';

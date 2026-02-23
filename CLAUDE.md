@@ -69,7 +69,7 @@ QUESTIONS_LOG.md
 
 ## Development Workflow
 
-- Read `~/Projects/PROCESS_PLAYBOOK.md` before starting — it contains cross-project process rules
+- Read `~/Projects/Cross Project Docs/PROCESS_PLAYBOOK.md` before starting — it contains cross-project process rules
 - Check `TASKS.md` for current task and progress
 - Work through tasks sequentially (Task 1 -> Task 8)
 - For each task: implement -> write tests -> run tests -> lint -> mark complete
